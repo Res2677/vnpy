@@ -1,7 +1,8 @@
 from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import MainWindow, create_qapp
-from vnpy.gateway.okex import OkexGateway
+#from vnpy.gateway.okex import OkexGateway
+from vnpy.gateway.feat import FeatGateway
 from vnpy.app.cta_strategy import CtaStrategyApp
 from vnpy.app.cta_backtester import CtaBacktesterApp
 #from vnpy.app.algo_trading import AlgoEngine
@@ -18,9 +19,10 @@ def main():
     event_engine = EventEngine()
 
     main_engine = MainEngine(event_engine)
-    main_engine.add_gateway(OkexGateway)
+    #main_engine.add_gateway(OkexGateway)
+    main_engine.add_gateway(FeatGateway)
     main_engine.add_app(CtaStrategyApp)
-    main_engine.add_app(CtaBacktesterApp)
+    #main_engine.add_app(CtaBacktesterApp)
     #main_engine.add_app(AlgoEngine)
     #main_engine.add_app(ScriptEngine)
     #main_engine.add_app(RiskManagerEngine)

@@ -77,6 +77,9 @@ class Exchange(Enum):
     """
     Exchange.
     """
+    # FEAT
+    FEAT = "FEAT"
+
     # Chinese
     CFFEX = "CFFEX"         # China Financial Futures Exchange
     SHFE = "SHFE"           # Shanghai Futures Exchange

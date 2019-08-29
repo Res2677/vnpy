@@ -22,8 +22,8 @@ SETTINGS = {
     "email.sender": "",
     "email.receiver": "",
 
-    "rqdata.username": "",
-    "rqdata.password": "",
+    "rqdata.username": "license",
+    "rqdata.password": "TItprlYfcJQFiMbMUEq_Voo4_ngiNQr7cV6tobnZinw6bX733Oyfvp7v_jO2V0mmcfBGWQTelO7CTZu7YrYYl4Z3IZhXtglPrML-XMLxiFlcI3JwMgO_Gl7sdQA4gSOxtuTabgXm2dLccsYr-aPq    xsneSYh2n0A-7ZIukKnWOF8=GVRwhrddx1qYsrgp57bXdcZvkik_th8S_fp4BARjpKd_MNs4CkuEs1DMUL8mbO83a2MbH-3aD4kxTX6JllfkPQz5Pvn8Yc4p3uYmPOG_5f-T-Iq17jrIbkhSAnAEtDYwCR8B-nKrHtbffDc    4AMUIVdzj_NEqH9BXQWfpP_SFHCc=",
 
     "database.driver": "sqlite",  # see database.Driver
     "database.database": "database.db",  # for sqlite, use this as filepath
