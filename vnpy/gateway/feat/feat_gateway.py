@@ -7,9 +7,14 @@ import time
 
 from copy import copy
 from datetime import datetime, timedelta
+from threading import Lock
 from vnpy.api.websocket import WebsocketClient
-from vnpy.trader.constant import Exchange
+from vnpy.trader.constant import (
+    Exchange,
+    Product
+)
 from vnpy.trader.gateway import BaseGateway
+
 from vnpy.trader.object import (
     TickData,
     OrderData,
@@ -36,10 +41,13 @@ class FeatGateway(BaseGateway):
         "proxy port": ""
     }
 
-    exchanges = [Exchange.FEAT]
+    exchanges = [Exchange.SSE]
 
     def __init__(self, event_engine):
         super().__init__(event_engine, "FEAT")
+
+        self.order_count = 10000
+        self.order_count_lock = Lock()
 
         self.ws_api = FeatWebsocketApi(self)
         self.ws_api.start()
@@ -56,6 +64,18 @@ class FeatGateway(BaseGateway):
         self.ws_api.connect(proxy_host, proxy_port)
 
     def subscribe(self,req: SubscribeRequest):
+        contract = ContractData(
+            symbol=req.symbol,
+            exchange=Exchange.SSE,
+            name=req.symbol,
+            product=Product.EQUITY,
+            size=1,
+            pricetick=0.01,
+            min_volume=1,
+            history_data=True,
+            gateway_name=self.gateway_name
+        )
+        self.on_contract(contract)
         self.ws_api.subscribe(req)
 
     def close(self):
@@ -67,10 +87,22 @@ class FeatGateway(BaseGateway):
     def query_position(self):
         pass
 
-    def send_order(self):
-        pass
+    def _new_order_id(self):
+        with self.order_count_lock:
+            self.order_count += 1
+            return self.order_count
 
-    def cancel_order(self):
+    def send_order(self, req: OrderRequest):
+        """
+        send order to exchange to trade
+        """
+        current_time = int(datetime.now().strftime("%y%m%d%H%M%S"))
+        orderid = f"a{current_time}{self._new_order_id()}"
+        order = req.create_order_data(orderid, self.gateway_name)
+        self.on_order(order)
+        return order.vt_orderid
+
+    def cancel_order(self, req: CancelRequest):
         pass
 
 
