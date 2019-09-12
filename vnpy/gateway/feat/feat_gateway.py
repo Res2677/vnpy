@@ -184,11 +184,14 @@ class FeatWebsocketApi(WebsocketClient):
         if not tick:
             return
 
-        tick.last_price = float(d["current"])
-        tick.open_price = float(d["current"])
-        tick.high_price = float(d["high"])
-        tick.low_price  = float(d["low"])
+        tick.name = d["name"]
+        tick.last_price = float(d["last_price"])
+        tick.open_price = float(d["open_price"])
+        tick.high_price = float(d["high_price"])
+        tick.low_price  = float(d["low_price"])
         tick.volume = float(d["volume"])
+        tick.open_interest = float(d["open_interest"])
+        tick.pre_close = float(d["pre_close"])
         tick.datetime = datetime.strptime(
             d["time"], "%Y-%m-%d %H:%M:%S")
 
