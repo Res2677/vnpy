@@ -9,9 +9,13 @@ from copy import copy
 from datetime import datetime, timedelta
 from threading import Lock
 from vnpy.api.websocket import WebsocketClient
+from vnpy.api.rest import Request, RestClient
 from vnpy.trader.constant import (
+    Direction,
+    OrderType,
     Exchange,
-    Product
+    Product,
+    Status
 )
 from vnpy.trader.gateway import BaseGateway
 
@@ -29,6 +33,16 @@ from vnpy.trader.object import (
 )
 
 WEBSOCKET_HOST = "ws://127.0.0.1:9002"
+REST_HOST = "http://10.138.0.140:8888"
+
+ORDERTYPE_VT2FEAT = {
+    OrderType.LIMIT: "LIMIT",
+    OrderType.MARKET: "MARKET"
+}
+DIRECTION_VT2FEAT = {
+    Direction.LONG: "BUY",
+    Direction.SHORT: "SELL"
+}
 
 
 class FeatGateway(BaseGateway):
@@ -38,32 +52,43 @@ class FeatGateway(BaseGateway):
 
     default_setting = {
         "proxy host": "",
-        "proxy port": ""
+        "proxy port": "",
+        "session number": 3
     }
 
-    exchanges = [Exchange.SSE]
+    exchanges = [Exchange.SSE,Exchange.SZSE]
 
     def __init__(self, event_engine):
         super().__init__(event_engine, "FEAT")
 
         self.order_count = 10000
         self.order_count_lock = Lock()
+        self.orders = {}
 
         self.ws_api = FeatWebsocketApi(self)
+        self.rest_api = FeatRestApi(self)
         self.ws_api.start()
 
     def connect(self, setting: dict):
         proxy_host = setting["proxy host"]
         proxy_port = setting["proxy port"]
+        session_number = setting["session number"]
 
         if proxy_port.isdigit():
             proxy_port = int(proxy_port)
         else:
             proxy_port = 0
 
+        self.rest_api.connect(session_number, proxy_host, proxy_port)
         self.ws_api.connect(proxy_host, proxy_port)
 
     def subscribe(self,req: SubscribeRequest):
+        """Send contract event before subscribe, this contract info is used
+           in cta_engine.send_order to validate the order by contract.
+           In other gateway like okex or ctp, there is a seperate query_contract
+           init step to do this, we implement this contract logic here for
+           simplification.
+        """
         contract = ContractData(
             symbol=req.symbol,
             exchange=Exchange.SSE,
@@ -79,6 +104,8 @@ class FeatGateway(BaseGateway):
         self.ws_api.subscribe(req)
 
     def close(self):
+        """"""
+        self.rest_api.stop()
         self.ws_api.stop()
 
     def query_account(self):
@@ -93,19 +120,164 @@ class FeatGateway(BaseGateway):
             return self.order_count
 
     def send_order(self, req: OrderRequest):
+        """"""
+        return self.rest_api.send_order(req)
+
+    def cancel_order(self, req: CancelRequest):
+        """"""
+        self.rest_api.cancel_order(req)
+
+    def on_order(self, order: OrderData):
+        """"""
+        self.orders[order.orderid] = order
+        super().on_order(order)
+
+    def get_order(self, orderid: str):
+        """"""
+        return self.orders.get(orderid, None)
+
+
+class FeatRestApi(RestClient):
+    """
+    FEAT rest API
+    """
+    def __init__(self, gateway):
+        super().__init__()
+
+        self.gateway = gateway
+        self.gateway_name = gateway.gateway_name
+
+        self.order_count = 10000
+        self.order_count_lock = Lock()
+
+        self.connect_time = int(datetime.now().strftime("%y%m%d%H%M%S"))
+
+    def connect(
+        self,
+        session_number: int,
+        proxy_host: str,
+        proxy_port: int
+    ):
+        """
+        Initialize connection to REST server.
+        """
+        self.init(REST_HOST, proxy_host, proxy_port)
+        self.start(session_number)
+        self.gateway.write_log("REST API started.")
+        # TODO: update time, contract, account, order once connected
+        #self.query_time()
+        #self.query_contract()
+        #self.query_account()
+        #self.query_order()
+
+    def _new_order_id(self):
+        with self.order_count_lock:
+            self.order_count += 1
+            return self.order_count
+
+    def send_order(self, req: OrderRequest):
         """
         send order to exchange to trade
         """
-        current_time = int(datetime.now().strftime("%y%m%d%H%M%S"))
-        orderid = f"a{current_time}{self._new_order_id()}"
+        orderid = f"a{self.connect_time}{self._new_order_id()}"
         order = req.create_order_data(orderid, self.gateway_name)
-        self.on_order(order)
+
+        data = {
+            "symbol": req.symbol,
+            "type": ORDERTYPE_VT2FEAT[req.type],
+            "action": DIRECTION_VT2FEAT[req.direction],
+            "priceType": 0,
+            "price": req.price,
+            "amount": req.volume
+        }
+
+        if req.type == OrderType.MARKET:
+            data["priceType"] = 4
+
+        self.add_request(
+            "POST",
+            "/api/v1.0/orders",
+            callback=self.on_send_order,
+            data=data,
+            extra=order,
+            on_failed=self.on_send_order_failed,
+            on_error=self.on_send_order_error,
+            is_json=True
+        )
+
+        self.gateway.on_order(order)
         return order.vt_orderid
 
     def cancel_order(self, req: CancelRequest):
-        pass
+        """"""
+        data = {
+            "symbol": req.symbol,
+            "client_iod": req.orderid
+        }
 
+        path = "/api/v1.0/orders/" + req.orderid
+        self.add_request(
+        "DELETE",
+        path,
+        callback=self.on_cancel_order,
+        data=data,
+        on_error=self.on_cancel_order_error,
+        on_failed=self.on_cancel_order_failed,
+        extra=req
+        )
 
+    def on_send_order_failed(self, status_code: str, request: Request):
+        """
+        Callback when sending order failed on server.
+        """
+        order = request.extra
+        order.status = Status.REJECTED
+        self.gateway.on_order(order)
+        msg = f"order failed, code: {status_code}, info:{request.response.text}"
+        self.gateway.write_log(msg)
+
+    def on_send_order_error(self, exception_type: type, exception_value: Exception,
+        tb, request: Request):
+        """
+        Callback when sending order caused exception.
+        """
+        order = request.extra
+        order.status = Status.REJECTED
+        self.gateway.on_order(order)
+
+        # Record exception if not ConnectionError
+        if not issubclass(exception_type, ConnectionError):
+            self.on_error(exception_type, exception_value, tb, request)
+
+    def on_send_order(self, data, request):
+        """
+        update orderid to server orderid
+        """
+        order = request.extra
+        order.orderid = data.get("id", None)
+        self.gateway.on_order(order)
+
+    def on_cancel_order_error(
+    self, exception_type: type, exception_value: Exception, tb, request: Request
+    ):
+        """
+        """
+        if not issubclass(exception_type, ConnectionError):
+            self.on_error(exception_type, exception_value, tb, request)
+
+    def on_cancel_order(self, data, request):
+        req = request.extra
+        order = self.gateway.get_order(req.orderid)
+        if order:
+            order.status = Status.CANCELLED
+            self.gateway.on_order(order)
+
+    def on_cancel_order_failed(self, status_code: int, request: Request):
+        req = request.extra
+        order = self.gateway.get_order(req.orderid)
+        if order:
+            order.status = Status.REJECTED
+            self.gateway.on_order(order)
 
 
 class FeatWebsocketApi(WebsocketClient):

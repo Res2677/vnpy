@@ -6,6 +6,7 @@ from multiprocessing.dummy import Pool
 from queue import Empty, Queue
 from typing import Any, Callable, Optional, Union
 
+import json
 import requests
 
 
@@ -32,6 +33,7 @@ class Request(object):
         on_failed: Callable = None,
         on_error: Callable = None,
         extra: Any = None,
+        is_json = False,
     ):
         """"""
         self.method = method
@@ -47,6 +49,7 @@ class Request(object):
 
         self.response = None
         self.status = RequestStatus.ready
+        self.is_json = is_json
 
     def __str__(self):
         if self.response is None:
@@ -143,6 +146,7 @@ class RestClient(object):
         on_failed: Callable = None,
         on_error: Callable = None,
         extra: Any = None,
+        is_json = False,
     ):
         """
         Add a new request.
@@ -167,6 +171,7 @@ class RestClient(object):
             on_failed,
             on_error,
             extra,
+            is_json,
         )
         self._queue.put(request)
         return request
@@ -244,21 +249,34 @@ class RestClient(object):
 
             url = self.make_full_url(request.path)
 
-            response = session.request(
-                request.method,
-                url,
-                headers=request.headers,
-                params=request.params,
-                data=request.data,
-                proxies=self.proxies,
-            )
+            if request.is_json:
+                response = session.request(
+                    request.method,
+                    url,
+                    headers=request.headers,
+                    params=request.params,
+                    data=json.dumps(request.data),
+                    proxies=self.proxies,
+                )
+            else:
+                response = session.request(
+                    request.method,
+                    url,
+                    headers=request.headers,
+                    params=request.params,
+                    data=request.data,
+                    proxies=self.proxies,
+                )
             request.response = response
             status_code = response.status_code
             if status_code // 100 == 2:  # 2xx codes are all successful
                 if status_code == 204:
                     json_body = None
                 else:
-                    json_body = response.json()
+                    try:
+                        json_body = response.json()
+                    except Exception:
+                        json_body = None
 
                 request.callback(json_body, request)
                 request.status = RequestStatus.success
