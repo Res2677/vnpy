@@ -25,6 +25,7 @@ from vnpy.trader.object import (
     TradeData,
     AccountData,
     ContractData,
+    PositionData,
     BarData,
     OrderRequest,
     CancelRequest,
@@ -33,11 +34,15 @@ from vnpy.trader.object import (
 )
 
 WEBSOCKET_HOST = "ws://127.0.0.1:9002"
-REST_HOST = "http://10.138.0.140:8888"
+REST_HOST = "http://192.168.91.130:8888"
 
 ORDERTYPE_VT2FEAT = {
     OrderType.LIMIT: "LIMIT",
     OrderType.MARKET: "MARKET"
+}
+MARKETTYPE_FEAT2VT = {
+    '深圳Ａ股': Exchange.SZSE,
+    '上海Ａ股': Exchange.SSE
 }
 DIRECTION_VT2FEAT = {
     Direction.LONG: "BUY",
@@ -167,13 +172,21 @@ class FeatRestApi(RestClient):
         # TODO: update time, contract, account, order once connected
         #self.query_time()
         #self.query_contract()
-        #self.query_account()
+        self.query_account()
         #self.query_order()
 
     def _new_order_id(self):
         with self.order_count_lock:
             self.order_count += 1
             return self.order_count
+
+    def query_account(self):
+        """"""
+        self.add_request(
+            "GET",
+            "/api/v1.0/positions",
+            callback=self.on_query_account
+        )
 
     def send_order(self, req: OrderRequest):
         """
@@ -225,6 +238,43 @@ class FeatRestApi(RestClient):
         on_failed=self.on_cancel_order_failed,
         extra=req
         )
+
+    def on_query_account(self, data, request):
+        """"""
+        account_data = data.get("subAccounts", None)
+        if account_data:
+            for k,v in account_data.items():
+                account = AccountData(gateway_name=self.gateway_name,
+                                      accountid=k,
+                                      balance=v["可用金额"],
+                                      frozen=v["冻结金额"])
+                self.gateway.on_account(account)
+            self.gateway.write_log("account query success")
+        else:
+            self.gateway.write_log("account query failed")
+
+        pos_data = data.get("dataTable", None)
+        if pos_data:
+            pos_data = pos_data.get("rows", None)
+            if pos_data:
+                for pos in pos_data:
+                    position = PositionData(gateway_name=self.gateway_name,
+                                            symbol=pos[1],
+                                            exchange=MARKETTYPE_FEAT2VT[pos[11]],
+                                            direction=Direction.LONG,
+                                            volume=pos[3],
+                                            frozen=pos[5],
+                                            price=pos[7],
+                                            pnl=pos[6],
+                                            yd_volume=pos[4]
+                                            )
+                    self.gateway.on_position(position)
+                self.gateway.write_log("position query success")
+            else:
+                self.gateway.write_log("position query failed")
+        else:
+            self.gateway.write_log("position query failed")
+
 
     def on_send_order_failed(self, status_code: str, request: Request):
         """
