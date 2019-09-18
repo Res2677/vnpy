@@ -36,9 +36,21 @@ from vnpy.trader.object import (
 WEBSOCKET_HOST = "ws://127.0.0.1:9002"
 REST_HOST = "http://192.168.91.130:8888"
 
+
+STATUS_FEAT2VT = {
+    "": Status.SUBMITTING,
+    "未成交": Status.NOTTRADED,
+    "部分成交": Status.PARTTRADED,
+    "全部成交": Status.ALLTRADED,
+    "全部撤单": Status.CANCELLED
+}
 ORDERTYPE_VT2FEAT = {
     OrderType.LIMIT: "LIMIT",
     OrderType.MARKET: "MARKET"
+}
+ORDERTYPE_FEAT2VT = {
+    "限价": OrderType.LIMIT,
+    "市价": OrderType.MARKET
 }
 MARKETTYPE_FEAT2VT = {
     '深圳Ａ股': Exchange.SZSE,
@@ -47,6 +59,10 @@ MARKETTYPE_FEAT2VT = {
 DIRECTION_VT2FEAT = {
     Direction.LONG: "BUY",
     Direction.SHORT: "SELL"
+}
+DIRECTION_FEAT2VT = {
+    "买入": Direction.LONG,
+    "卖出": Direction.SHORT
 }
 
 
@@ -262,11 +278,11 @@ class FeatRestApi(RestClient):
                                             symbol=pos[1],
                                             exchange=MARKETTYPE_FEAT2VT[pos[11]],
                                             direction=Direction.LONG,
-                                            volume=pos[3],
-                                            frozen=pos[5],
-                                            price=pos[7],
-                                            pnl=pos[6],
-                                            yd_volume=pos[4]
+                                            volume=int(pos[3]),
+                                            frozen=int(pos[5]),
+                                            price=float('%.2f' % pos[7]),
+                                            pnl=float('%.2f' % pos[6]),
+                                            yd_volume=int(pos[4])
                                             )
                     self.gateway.on_position(position)
                 self.gateway.write_log("position query success")
@@ -301,10 +317,16 @@ class FeatRestApi(RestClient):
 
     def on_send_order(self, data, request):
         """
-        update orderid to server orderid
+        update order status once if order is submitted successfully,
+        subsequent updates will then be pushed by websocket
         """
         order = request.extra
-        order.orderid = data.get("id", None)
+        server_orderid = data.get("id", None)
+        if server_orderid:
+            order.orderid = server_orderid
+            order.status = Status.NOTTRADED
+        else:
+            order.status = Status.REJECTED
         self.gateway.on_order(order)
 
     def on_cancel_order_error(
@@ -323,11 +345,8 @@ class FeatRestApi(RestClient):
             self.gateway.on_order(order)
 
     def on_cancel_order_failed(self, status_code: int, request: Request):
-        req = request.extra
-        order = self.gateway.get_order(req.orderid)
-        if order:
-            order.status = Status.REJECTED
-            self.gateway.on_order(order)
+        msg = f"order failed, code: {status_code}, info:{request.response.text}"
+        self.gateway.write_log(msg)
 
 
 class FeatWebsocketApi(WebsocketClient):
@@ -341,6 +360,7 @@ class FeatWebsocketApi(WebsocketClient):
         self.gateway_name = gateway.gateway_name
         self.host = WEBSOCKET_HOST
 
+        self.trade_count = 10000
         self.connect_time = 0
 
         self.callbacks = {}
@@ -353,6 +373,7 @@ class FeatWebsocketApi(WebsocketClient):
     ):
         self.connect_time = int(datetime.now().strftime("%y%m%d%H%M%S"))
         self.init(WEBSOCKET_HOST)
+        self.callbacks["order"] = self.on_order
 
     def unpack_data(self, data):
         return json.loads(data)
@@ -399,6 +420,49 @@ class FeatWebsocketApi(WebsocketClient):
 
             if callback:
                 callback(data)
+
+    def symbol_to_exchange(self, symbol: str):
+        if symbol[0:3] == '600' or symbol[0:3] == '601':
+            return Exchange.SSE
+        else:
+            return Exchange.SZSE
+
+    def on_order(self, d):
+        """
+        Parse pushed order status
+        """
+        order = OrderData(
+            symbol = d["symbol"],
+            exchange = self.symbol_to_exchange(d["symbol"]),
+            type = ORDERTYPE_FEAT2VT[d["otype"]],
+            orderid = d["oid"],
+            direction = DIRECTION_FEAT2VT[d["op"]],
+            price = float(d["price"]),
+            volume = int(d["volume"]),
+            traded = int(d["traded"]),
+            status = STATUS_FEAT2VT[d["status"]],
+            gateway_name = self.gateway_name,
+        )
+        self.gateway.on_order(copy(order))
+
+        trade_volume = d.get("last_fill_qty", 0)
+        if not trade_volume or float(trade_volume) == 0:
+            return
+
+        self.trade_count += 1
+        tradeid = f"{self.connect_time}{self.trade_count}"
+
+        trade = TradeData(
+            symbol=order.symbol,
+            exchange=order.exchange,
+            orderid=order.orderid,
+            tradeid=tradeid,
+            direction=order.direction,
+            price=float(d["avr_fill_price"]),
+            volume=float(trade_volume),
+            gateway_name=self.gateway_name
+        )
+        self.gateway.on_trade(trade)
 
     def on_ticker(self, d):
         symbol = d["symbol"]
