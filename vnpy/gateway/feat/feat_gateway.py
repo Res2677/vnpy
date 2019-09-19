@@ -65,6 +65,9 @@ DIRECTION_FEAT2VT = {
     "卖出": Direction.SHORT
 }
 
+local_orderid_to_server_orderid = {}
+server_orderid_to_local_orderid = {}
+
 
 class FeatGateway(BaseGateway):
     """
@@ -210,6 +213,7 @@ class FeatRestApi(RestClient):
         """
         orderid = f"a{self.connect_time}{self._new_order_id()}"
         order = req.create_order_data(orderid, self.gateway_name)
+        order.time = datetime.now().strftime("%H:%M:%S")
 
         data = {
             "symbol": req.symbol,
@@ -243,8 +247,8 @@ class FeatRestApi(RestClient):
             "symbol": req.symbol,
             "client_iod": req.orderid
         }
-
-        path = "/api/v1.0/orders/" + req.orderid
+        orderid = local_orderid_to_server_orderid.get(req.orderid, req.orderid)
+        path = "/api/v1.0/orders/" + orderid
         self.add_request(
         "DELETE",
         path,
@@ -280,8 +284,8 @@ class FeatRestApi(RestClient):
                                             direction=Direction.LONG,
                                             volume=int(pos[3]),
                                             frozen=int(pos[5]),
-                                            price=float('%.2f' % pos[7]),
-                                            pnl=float('%.2f' % pos[6]),
+                                            price=float('%.2f' % float(pos[7])),
+                                            pnl=float('%.2f' % float(pos[6])),
                                             yd_volume=int(pos[4])
                                             )
                     self.gateway.on_position(position)
@@ -299,7 +303,7 @@ class FeatRestApi(RestClient):
         order = request.extra
         order.status = Status.REJECTED
         self.gateway.on_order(order)
-        msg = f"order failed, code: {status_code}, info:{request.response.text}"
+        msg = f"send order failed, code: {status_code}, info:{request.response.text}"
         self.gateway.write_log(msg)
 
     def on_send_order_error(self, exception_type: type, exception_value: Exception,
@@ -323,7 +327,8 @@ class FeatRestApi(RestClient):
         order = request.extra
         server_orderid = data.get("id", None)
         if server_orderid:
-            order.orderid = server_orderid
+            local_orderid_to_server_orderid[order.orderid] = server_orderid
+            server_orderid_to_local_orderid[server_orderid] = order.orderid
             order.status = Status.NOTTRADED
         else:
             order.status = Status.REJECTED
@@ -345,7 +350,7 @@ class FeatRestApi(RestClient):
             self.gateway.on_order(order)
 
     def on_cancel_order_failed(self, status_code: int, request: Request):
-        msg = f"order failed, code: {status_code}, info:{request.response.text}"
+        msg = f"cancel order failed, code: {status_code}, info:{request.response.text}"
         self.gateway.write_log(msg)
 
 
@@ -435,12 +440,13 @@ class FeatWebsocketApi(WebsocketClient):
             symbol = d["symbol"],
             exchange = self.symbol_to_exchange(d["symbol"]),
             type = ORDERTYPE_FEAT2VT[d["otype"]],
-            orderid = d["oid"],
+            orderid = server_orderid_to_local_orderid.get(d["oid"], d["oid"]),
             direction = DIRECTION_FEAT2VT[d["op"]],
             price = float(d["price"]),
             volume = int(d["volume"]),
             traded = int(d["traded"]),
             status = STATUS_FEAT2VT[d["status"]],
+            time = d["time"],
             gateway_name = self.gateway_name,
         )
         self.gateway.on_order(copy(order))
