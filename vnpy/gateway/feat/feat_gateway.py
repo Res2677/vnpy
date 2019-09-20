@@ -15,7 +15,8 @@ from vnpy.trader.constant import (
     OrderType,
     Exchange,
     Product,
-    Status
+    Status,
+    Offset
 )
 from vnpy.trader.gateway import BaseGateway
 
@@ -67,6 +68,7 @@ DIRECTION_FEAT2VT = {
 
 local_orderid_to_server_orderid = {}
 server_orderid_to_local_orderid = {}
+server_orderid_to_local_offset = {}
 
 
 class FeatGateway(BaseGateway):
@@ -214,14 +216,14 @@ class FeatRestApi(RestClient):
         orderid = f"a{self.connect_time}{self._new_order_id()}"
         order = req.create_order_data(orderid, self.gateway_name)
         order.time = datetime.now().strftime("%H:%M:%S")
-
+        order.price = float('%.2f' % order.price)
         data = {
-            "symbol": req.symbol,
-            "type": ORDERTYPE_VT2FEAT[req.type],
-            "action": DIRECTION_VT2FEAT[req.direction],
+            "symbol": order.symbol,
+            "type": ORDERTYPE_VT2FEAT[order.type],
+            "action": DIRECTION_VT2FEAT[order.direction],
             "priceType": 0,
-            "price": req.price,
-            "amount": req.volume
+            "price": order.price,
+            "amount": order.volume
         }
 
         if req.type == OrderType.MARKET:
@@ -329,6 +331,7 @@ class FeatRestApi(RestClient):
         if server_orderid:
             local_orderid_to_server_orderid[order.orderid] = server_orderid
             server_orderid_to_local_orderid[server_orderid] = order.orderid
+            server_orderid_to_local_offset[server_orderid] = order.offset
             order.status = Status.NOTTRADED
         else:
             order.status = Status.REJECTED
@@ -442,13 +445,14 @@ class FeatWebsocketApi(WebsocketClient):
             type = ORDERTYPE_FEAT2VT[d["otype"]],
             orderid = server_orderid_to_local_orderid.get(d["oid"], d["oid"]),
             direction = DIRECTION_FEAT2VT[d["op"]],
-            price = float(d["price"]),
+            price = float('%.2f' %float(d["price"])),
             volume = int(d["volume"]),
             traded = int(d["traded"]),
             status = STATUS_FEAT2VT[d["status"]],
             time = d["time"],
             gateway_name = self.gateway_name,
         )
+        order.offset = server_orderid_to_local_offset.get(d["oid"], Offset.NONE)
         self.gateway.on_order(copy(order))
 
         trade_volume = d.get("last_fill_qty", 0)
@@ -464,10 +468,12 @@ class FeatWebsocketApi(WebsocketClient):
             orderid=order.orderid,
             tradeid=tradeid,
             direction=order.direction,
+            offset=order.offset,
             price=float(d["avr_fill_price"]),
             volume=float(trade_volume),
             gateway_name=self.gateway_name
         )
+        trade.time=datetime.now().strftime("%H:%M:%S")
         self.gateway.on_trade(trade)
 
     def on_ticker(self, d):
