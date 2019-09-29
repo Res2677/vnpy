@@ -403,7 +403,7 @@ class BreakthroughStrategy(CtaTemplate):
             return
         elif self.state == 'break':
             peak_price = self._df_1min.iloc[self._last_peak_idx]['last']
-            if tick['last'] > peak_price: # break must hold before open position
+            if tick['last'] >= peak_price: # break must hold before open position
                 sum_sell_vol = tick['a1_v'] + tick['a2_v'] + tick['a3_v'] +\
                                tick['a4_v'] + tick['a5_v']
                 if sum_sell_vol > self.sell_vol_limit:

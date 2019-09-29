@@ -15,6 +15,7 @@ from vnpy.trader.database import database_manager
 from vnpy.app.cta_strategy import (
     CtaTemplate,
     BacktestingEngine,
+    BacktestingMode,
     OptimizationSetting
 )
 
@@ -145,7 +146,8 @@ class BacktesterEngine(BaseEngine):
             slippage=slippage,
             size=size,
             pricetick=pricetick,
-            capital=capital
+            capital=capital,
+            mode=BacktestingMode.TICK
         )
 
         strategy_class = self.classes[class_name]
@@ -334,7 +336,7 @@ class BacktesterEngine(BaseEngine):
         end: datetime
     ):
         """
-        Query bar data from RQData.
+        Query bar & tick data from RQData.
         """
         self.write_log(f"{vt_symbol}-{interval}开始下载历史数据")
 
@@ -358,7 +360,10 @@ class BacktesterEngine(BaseEngine):
             data = rqdata_client.query_history(req)
 
         if data:
-            database_manager.save_bar_data(data)
+            if Interval(interval) == Interval.TICK:
+                database_manager.save_tick_data(data)
+            else:
+                database_manager.save_bar_data(data)
             self.write_log(f"{vt_symbol}-{interval}历史数据下载完成")
         else:
             self.write_log(f"数据下载失败，无法获取{vt_symbol}的历史数据")

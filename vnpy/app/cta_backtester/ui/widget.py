@@ -58,14 +58,14 @@ class BacktesterManager(QtWidgets.QWidget):
         self.class_combo = QtWidgets.QComboBox()
         self.class_combo.addItems(self.class_names)
 
-        self.symbol_line = QtWidgets.QLineEdit("IF88.CFFEX")
+        self.symbol_line = QtWidgets.QLineEdit("600226.SSE")
 
         self.interval_combo = QtWidgets.QComboBox()
         for inteval in Interval:
             self.interval_combo.addItem(inteval.value)
 
-        end_dt = datetime.now()
-        start_dt = end_dt - timedelta(days=3 * 365)
+        end_dt = datetime.strptime("2019-04-09 09:30:00", "%Y-%m-%d %H:%M:%S")
+        start_dt = end_dt - timedelta(days=1)
 
         self.start_date_edit = QtWidgets.QDateEdit(
             QtCore.QDate(
@@ -75,13 +75,17 @@ class BacktesterManager(QtWidgets.QWidget):
             )
         )
         self.end_date_edit = QtWidgets.QDateEdit(
-            QtCore.QDate.currentDate()
+            QtCore.QDate(
+                end_dt.year,
+                end_dt.month,
+                end_dt.day
+            )
         )
 
         self.rate_line = QtWidgets.QLineEdit("0.000025")
-        self.slippage_line = QtWidgets.QLineEdit("0.2")
-        self.size_line = QtWidgets.QLineEdit("300")
-        self.pricetick_line = QtWidgets.QLineEdit("0.2")
+        self.slippage_line = QtWidgets.QLineEdit("0.02")
+        self.size_line = QtWidgets.QLineEdit("1")
+        self.pricetick_line = QtWidgets.QLineEdit("0.01")
         self.capital_line = QtWidgets.QLineEdit("1000000")
 
         backtesting_button = QtWidgets.QPushButton("开始回测")

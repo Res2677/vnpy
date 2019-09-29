@@ -229,26 +229,25 @@ def init_models(db: Database, driver: Driver):
             db_tick.bid_volume_1 = tick.bid_volume_1
             db_tick.ask_volume_1 = tick.ask_volume_1
 
-            if tick.bid_price_2:
-                db_tick.bid_price_2 = tick.bid_price_2
-                db_tick.bid_price_3 = tick.bid_price_3
-                db_tick.bid_price_4 = tick.bid_price_4
-                db_tick.bid_price_5 = tick.bid_price_5
+            db_tick.bid_price_2 = tick.bid_price_2
+            db_tick.bid_price_3 = tick.bid_price_3
+            db_tick.bid_price_4 = tick.bid_price_4
+            db_tick.bid_price_5 = tick.bid_price_5
 
-                db_tick.ask_price_2 = tick.ask_price_2
-                db_tick.ask_price_3 = tick.ask_price_3
-                db_tick.ask_price_4 = tick.ask_price_4
-                db_tick.ask_price_5 = tick.ask_price_5
+            db_tick.ask_price_2 = tick.ask_price_2
+            db_tick.ask_price_3 = tick.ask_price_3
+            db_tick.ask_price_4 = tick.ask_price_4
+            db_tick.ask_price_5 = tick.ask_price_5
 
-                db_tick.bid_volume_2 = tick.bid_volume_2
-                db_tick.bid_volume_3 = tick.bid_volume_3
-                db_tick.bid_volume_4 = tick.bid_volume_4
-                db_tick.bid_volume_5 = tick.bid_volume_5
+            db_tick.bid_volume_2 = tick.bid_volume_2
+            db_tick.bid_volume_3 = tick.bid_volume_3
+            db_tick.bid_volume_4 = tick.bid_volume_4
+            db_tick.bid_volume_5 = tick.bid_volume_5
 
-                db_tick.ask_volume_2 = tick.ask_volume_2
-                db_tick.ask_volume_3 = tick.ask_volume_3
-                db_tick.ask_volume_4 = tick.ask_volume_4
-                db_tick.ask_volume_5 = tick.ask_volume_5
+            db_tick.ask_volume_2 = tick.ask_volume_2
+            db_tick.ask_volume_3 = tick.ask_volume_3
+            db_tick.ask_volume_4 = tick.ask_volume_4
+            db_tick.ask_volume_5 = tick.ask_volume_5
 
             return db_tick
 
@@ -278,26 +277,25 @@ def init_models(db: Database, driver: Driver):
                 gateway_name="DB",
             )
 
-            if self.bid_price_2:
-                tick.bid_price_2 = self.bid_price_2
-                tick.bid_price_3 = self.bid_price_3
-                tick.bid_price_4 = self.bid_price_4
-                tick.bid_price_5 = self.bid_price_5
+            tick.bid_price_2 = self.bid_price_2
+            tick.bid_price_3 = self.bid_price_3
+            tick.bid_price_4 = self.bid_price_4
+            tick.bid_price_5 = self.bid_price_5
 
-                tick.ask_price_2 = self.ask_price_2
-                tick.ask_price_3 = self.ask_price_3
-                tick.ask_price_4 = self.ask_price_4
-                tick.ask_price_5 = self.ask_price_5
+            tick.ask_price_2 = self.ask_price_2
+            tick.ask_price_3 = self.ask_price_3
+            tick.ask_price_4 = self.ask_price_4
+            tick.ask_price_5 = self.ask_price_5
 
-                tick.bid_volume_2 = self.bid_volume_2
-                tick.bid_volume_3 = self.bid_volume_3
-                tick.bid_volume_4 = self.bid_volume_4
-                tick.bid_volume_5 = self.bid_volume_5
+            tick.bid_volume_2 = self.bid_volume_2
+            tick.bid_volume_3 = self.bid_volume_3
+            tick.bid_volume_4 = self.bid_volume_4
+            tick.bid_volume_5 = self.bid_volume_5
 
-                tick.ask_volume_2 = self.ask_volume_2
-                tick.ask_volume_3 = self.ask_volume_3
-                tick.ask_volume_4 = self.ask_volume_4
-                tick.ask_volume_5 = self.ask_volume_5
+            tick.ask_volume_2 = self.ask_volume_2
+            tick.ask_volume_3 = self.ask_volume_3
+            tick.ask_volume_4 = self.ask_volume_4
+            tick.ask_volume_5 = self.ask_volume_5
 
             return tick
 

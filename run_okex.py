@@ -22,7 +22,7 @@ def main():
     #main_engine.add_gateway(OkexGateway)
     main_engine.add_gateway(FeatGateway)
     main_engine.add_app(CtaStrategyApp)
-    #main_engine.add_app(CtaBacktesterApp)
+    main_engine.add_app(CtaBacktesterApp)
     #main_engine.add_app(AlgoEngine)
     #main_engine.add_app(ScriptEngine)
     #main_engine.add_app(RiskManagerEngine)

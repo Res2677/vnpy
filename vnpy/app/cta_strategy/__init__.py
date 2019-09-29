@@ -5,7 +5,7 @@ from vnpy.trader.constant import Direction
 from vnpy.trader.object import TickData, BarData, TradeData, OrderData
 from vnpy.trader.utility import BarGenerator, ArrayManager
 
-from .base import APP_NAME, StopOrder
+from .base import APP_NAME, StopOrder, BacktestingMode
 from .engine import CtaEngine
 from .backtesting import BacktestingEngine, OptimizationSetting
 from .template import CtaTemplate, CtaSignal, TargetPosTemplate

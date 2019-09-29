@@ -131,6 +131,7 @@ class Interval(Enum):
     """
     Interval of bar data.
     """
+    TICK = "tick"
     MINUTE = "1m"
     HOUR = "1h"
     DAILY = "d"

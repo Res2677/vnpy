@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from pandas import Timestamp
 from typing import List
 
 from rqdatac import init as rqdata_init
@@ -8,16 +9,18 @@ from rqdatac.share.errors import AuthenticationFailed
 
 from .setting import SETTINGS
 from .constant import Exchange, Interval
-from .object import BarData, HistoryRequest
+from .object import BarData, TickData, HistoryRequest
 
 
 INTERVAL_VT2RQ = {
+    Interval.TICK: "tick",
     Interval.MINUTE: "1m",
     Interval.HOUR: "60m",
     Interval.DAILY: "1d",
 }
 
 INTERVAL_ADJUSTMENT_MAP = {
+    Interval.TICK: timedelta(),
     Interval.MINUTE: timedelta(minutes=1),
     Interval.HOUR: timedelta(hours=1),
     Interval.DAILY: timedelta()         # no need to adjust for daily bar
@@ -121,34 +124,87 @@ class RqdataClient:
         adjustment = INTERVAL_ADJUSTMENT_MAP[interval]
 
         # For querying night trading period data
-        end += timedelta(1)
+        # end += timedelta(1) # stock data does not need this
 
-        df = rqdata_get_price(
-            rq_symbol,
-            frequency=rq_interval,
-            fields=["open", "high", "low", "close", "volume"],
-            start_date=start,
-            end_date=end,
-            adjust_type="none"
-        )
+        if interval == Interval.TICK:
+            df = rqdata_get_price(
+                rq_symbol,
+                frequency=rq_interval,
+                start_date=start,
+                end_date=end
+            )
 
-        data: List[BarData] = []
+            data: List[TickData] = []
+            if df is not None:
+                prev_volume = 0
+                for ix, row in df.iterrows():
+                    last_volume = row["volume"] - prev_volume
+                    prev_volume = row["volume"]
+                    tick = TickData(
+                        gateway_name = 'RQ',
+                        symbol = symbol,
+                        exchange = exchange,
+                        datetime = ix.to_pydatetime(),
+                        name="",
+                        volume=row["volume"],
+                        open_interest=row["total_turnover"],
+                        last_price=row["last"],
+                        last_volume=last_volume,
+                        limit_up=row["open"] * 1.1,
+                        limit_down=row["open"] * 0.9,
+                        open_price=row["open"],
+                        high_price=row["high"],
+                        low_price=row["low"],
+                        pre_close=row["prev_close"],
+                        ask_price_1=row["a1"],
+                        ask_price_2=row["a2"],
+                        ask_price_3=row["a3"],
+                        ask_price_4=row["a4"],
+                        ask_price_5=row["a5"],
+                        bid_price_1=row["b1"],
+                        bid_price_2=row["b2"],
+                        bid_price_3=row["b3"],
+                        bid_price_4=row["b4"],
+                        bid_price_5=row["b5"],
+                        ask_volume_1=row["a1_v"],
+                        ask_volume_2=row["a2_v"],
+                        ask_volume_3=row["a3_v"],
+                        ask_volume_4=row["a4_v"],
+                        ask_volume_5=row["a5_v"],
+                        bid_volume_1=row["b1_v"],
+                        bid_volume_2=row["b2_v"],
+                        bid_volume_3=row["b3_v"],
+                        bid_volume_4=row["b4_v"],
+                        bid_volume_5=row["b5_v"]
+                    )
+                    data.append(tick)
+        else:
+            df = rqdata_get_price(
+                rq_symbol,
+                frequency=rq_interval,
+                fields=["open", "high", "low", "close", "volume"],
+                start_date=start,
+                end_date=end,
+                adjust_type="none"
+            )
 
-        if df is not None:
-            for ix, row in df.iterrows():
-                bar = BarData(
-                    symbol=symbol,
-                    exchange=exchange,
-                    interval=interval,
-                    datetime=row.name.to_pydatetime() - adjustment,
-                    open_price=row["open"],
-                    high_price=row["high"],
-                    low_price=row["low"],
-                    close_price=row["close"],
-                    volume=row["volume"],
-                    gateway_name="RQ"
-                )
-                data.append(bar)
+            data: List[BarData] = []
+
+            if df is not None:
+                for ix, row in df.iterrows():
+                    bar = BarData(
+                        symbol=symbol,
+                        exchange=exchange,
+                        interval=interval,
+                        datetime=row.name.to_pydatetime() - adjustment,
+                        open_price=row["open"],
+                        high_price=row["high"],
+                        low_price=row["low"],
+                        close_price=row["close"],
+                        volume=row["volume"],
+                        gateway_name="RQ"
+                    )
+                    data.append(bar)
 
         return data
 
