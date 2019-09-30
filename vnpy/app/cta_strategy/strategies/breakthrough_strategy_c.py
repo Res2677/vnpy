@@ -9,6 +9,9 @@ from vnpy.app.cta_strategy import (
     TradeData,
     OrderData
 )
+from vnpy.trader.constant import (
+    Status
+)
 
 TICK_COLUMNS=['datetime', 'open', 'last', 'high', 'low', 'prev_close','volume','total_turnover',\
               'a1', 'a2', 'a3', 'a4', 'a5', 'a1_v', 'a2_v', 'a3_v', 'a4_v', 'a5_v',\
@@ -39,8 +42,10 @@ class BreakthroughStrategy(CtaTemplate):
     _last_break_idx = None
     _buy_price = 0
     _buy_volume = fixed_buy_size
-    _sell_price = 0
+    _close_price = 0
+    _close_volume = 0
     _stop_price = 0
+    _stop_volume = 0
 
     _judged_tick_count = 0
     _break_hold = 0
@@ -64,14 +69,12 @@ class BreakthroughStrategy(CtaTemplate):
                  "_last_trough_idx",
                  "_buy_price",
                  "_buy_volume",
-                 "_sell_price",
-                 "_stop_price",
                  "_judged_tick_count",
                  "_break_hold",
                  "_last_b1_price",
                  "_last_b2_price"]
 
-    STATES = ['start', 'peak', 'break', 'open', 'watch', 'close', 'stop']
+    STATES = ['start', 'peak', 'break', 'open', 'opening', 'watch', 'close', 'stop']
     TRANSITIONS = [
         {'trigger':'new_peak', 'source':'start', 'dest':'peak', 'after':'on_new_peak'},
         {'trigger':'new_break', 'source':'peak', 'dest':'break', 'after':'on_new_break'},
@@ -94,6 +97,9 @@ class BreakthroughStrategy(CtaTemplate):
 
         self._df_tick = pd.DataFrame(columns=TICK_COLUMNS)
         self._df_1min = pd.DataFrame(columns=TICK_COLUMNS)
+
+        self._order_state = 'order_start'
+        self._tick_date = None
 
         self.machine = Machine(model=self,
                                states=self.STATES,
@@ -122,7 +128,16 @@ class BreakthroughStrategy(CtaTemplate):
         """
         Callback of new order data update.
         """
-        pass
+        if self._order_state == 'order_watch':
+            self.write_log('[x] order status:{} volume:{} traded:{}'\
+                            .format(order.status,
+                                    order.volume,
+                                    order.traded))
+            if order.status == Status.ALLTRADED:
+                self._order_state = 'order_open'
+            elif order.status in set([Status.REJECTED, Status.CANCELLED]):
+                self._order_state = 'order_end'
+        return
 
     def on_trade(self, trade: TradeData):
         """
@@ -144,13 +159,17 @@ class BreakthroughStrategy(CtaTemplate):
         self._last_break_idx = None   # tick
         self._buy_price = 0
         self._buy_volume = self.fixed_buy_size
-        self._sell_price = 0
         self._stop_price = 0
+        self._stop_volume = 0
+        self._close_price = 0
+        self._close_volume = 0
 
         self._judged_tick_count = 0
         self._break_hold = 0
         self._last_b1_price = 0
         self._last_b2_price = 0
+
+        self._order_state = 'order_start'
         self.to_start()
 
     @staticmethod
@@ -298,8 +317,22 @@ class BreakthroughStrategy(CtaTemplate):
             return
 
         tick = self.tickdata_to_series(tickdata)
+
+        if not self._tick_date:
+            self._tick_date = tick['datetime'].date()
+
+        if not self._tick_date == tick['datetime'].date():
+            self.reset()
+            self._tick_date = tick['datetime'].date()
+
         if not self.is_trading_time(tick['datetime'].time()):
             return
+
+        # if time > 14:55, stop all open positions
+        if tick['datetime'].time() > time(14, 55) and self.pos > 0:
+            self._stop_volume = self.pos
+            self._stop_price = tick['b1']
+            self.to_stop()
 
         # calculate current volume
         if self._last_volume == 0:
@@ -412,18 +445,28 @@ class BreakthroughStrategy(CtaTemplate):
                 self.reset() # reset, transit back to state: start
             return
         elif self.state == 'open':
-            peak_price = self._df_1min.iloc[self._last_peak_idx]['last']
-            if tick['last'] > peak_price:
-                self._buy_price = tick['a3']
-                self._last_b1_price = tick['b1']
-                self._last_b2_price = tick['b2']
+            if self._order_state == 'order_start':
+                peak_price = self._df_1min.iloc[self._last_peak_idx]['last']
+                if tick['last'] >= peak_price:
+                    self._buy_price = tick['a3']
+                    self._last_b1_price = tick['b1']
+                    self._last_b2_price = tick['b2']
 
-                self.buy(self._buy_price, self._buy_volume)
-                self.new_watch() # transit to state: watch
-                ## if failed
-                ## reset, transit back to state: break
+                    self.buy(self._buy_price, self._buy_volume)
+                    self._order_state = 'order_watch'
+                else:
+                    self.to_break() # transit back to break
+            elif self._order_state == 'order_open':
+                    # open success
+                    self._order_state = 'order_start'
+                    self.new_watch()
+            elif self._order_state == 'order_end':
+                    # open failed
+                    self._order_state = 'order_start'
+                    self.to_peak() # transit back to peak
             else:
-                self.to_break() # transit back to break
+                # state:order_watch is handled in func:on_order
+                pass
             return
         elif self.state == 'watch':
             peak_price = self._df_1min.iloc[self._last_peak_idx]['last']
@@ -432,19 +475,40 @@ class BreakthroughStrategy(CtaTemplate):
                 self._last_b2_price = tick['b2']
             elif tick['b1'] <= self._last_b2_price:
                 self._close_price = tick['b1']
+                self._close_volume = self._buy_volume
                 self.new_close()
             elif tick['last'] < peak_price:
                 self._stop_price = tick['b1']
+                self._stop_volume = self._stop_volume
                 self.new_stop()
             return
         elif self.state == 'close':
-            self.sell(self._close_price, self._buy_volume)
-            self.reset()
+            if self._order_state == 'order_start':
+                self.sell(self._close_price, self._close_volume)
+                self._order_state = 'order_watch'
+            elif self._order_state == 'order_open':
+                self.write_log('[x] position close success')
+                self.reset()
+            elif self._order_state == 'order_end':
+                self.write_log('[x] position close failed, resell at b2 price: {}'\
+                               .format(tick['b2']))
+                self._close_price = tick['b2']
+                self._order_state = 'order_start'
+            else:
+                pass
             return
         elif self.state == 'stop':
-            self.sell(self._stop_price, self._buy_volume)
-            self.reset()
+            if self._order_state == 'order_start':
+                self.sell(self._stop_price, self._stop_volume)
+                self._order_state = 'order_watch'
+            elif self._order_state == 'order_open':
+                self.write_log('[x] position stop success')
+                self.reset()
+            elif self._order_state == 'order_end':
+                self.write_log('[x] position stop failed, resell at b2 price: {}'\
+                               .format(tick['b2']))
+                self._stop_price = tick['b2']
+                self._order_state = 'order_start'
             return
         else:
             return
-

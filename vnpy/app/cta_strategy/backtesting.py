@@ -215,13 +215,13 @@ class BacktestingEngine:
             self.end = datetime.now()
 
         if self.start >= self.end:
-            self.output("起始日期必须小于结束日期")    
-            return        
+            self.output("起始日期必须小于结束日期") 
+            return 
 
         self.history_data.clear()       # Clear previously loaded history data
 
         # Load 30 days of data each time and allow for progress update
-        progress_delta = timedelta(days=30)
+        progress_delta = timedelta(days=5)
         total_delta = self.end - self.start
 
         start = self.start
@@ -339,7 +339,7 @@ class BacktestingEngine:
         # Check DataFrame input exterior
         if df is None:
             df = self.daily_df
-        
+ 
         # Check for init DataFrame 
         if df is None:
             # Set all statistics to 0 if no trade.
@@ -580,7 +580,7 @@ class BacktestingEngine:
         def generate_parameter():
             """"""
             return random.choice(settings)
-        
+ 
         def mutate_individual(individual, indpb):
             """"""
             size = len(individual)
@@ -621,23 +621,23 @@ class BacktestingEngine:
 
         # Set up genetic algorithem
         toolbox = base.Toolbox() 
-        toolbox.register("individual", tools.initIterate, creator.Individual, generate_parameter)                          
-        toolbox.register("population", tools.initRepeat, list, toolbox.individual)                                            
-        toolbox.register("mate", tools.cxTwoPoint)                                               
-        toolbox.register("mutate", mutate_individual, indpb=1)               
-        toolbox.register("evaluate", ga_optimize)                                                
-        toolbox.register("select", tools.selNSGA2)       
+        toolbox.register("individual", tools.initIterate, creator.Individual, generate_parameter)
+        toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+        toolbox.register("mate", tools.cxTwoPoint)
+        toolbox.register("mutate", mutate_individual, indpb=1)
+        toolbox.register("evaluate", ga_optimize)
+        toolbox.register("select", tools.selNSGA2)
 
         total_size = len(settings)
         pop_size = population_size                      # number of individuals in each generation
         lambda_ = pop_size                              # number of children to produce at each generation
         mu = int(pop_size * 0.8)                        # number of individuals to select for the next generation
 
-        cxpb = 0.95         # probability that an offspring is produced by crossover    
+        cxpb = 0.95         # probability that an offspring is produced by crossover
         mutpb = 1 - cxpb    # probability that an offspring is produced by mutation
         ngen = ngen_size    # number of generation
-                
-        pop = toolbox.population(pop_size)      
+
+        pop = toolbox.population(pop_size)
         hof = tools.ParetoFront()               # end result of pareto front
 
         stats = tools.Statistics(lambda ind: ind.fitness.values)

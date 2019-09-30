@@ -26,6 +26,9 @@ dist
 *.ipdb
 *.pdb
 
+# Mac
+.DS_Store
+
 # Documents
 _build
 _static
