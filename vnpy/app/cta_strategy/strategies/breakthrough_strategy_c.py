@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import time
 import numpy as np
 import pandas as pd
 import peakutils
@@ -13,12 +13,13 @@ from vnpy.trader.constant import (
     Status
 )
 
-TICK_COLUMNS=['datetime', 'open', 'last', 'high', 'low', 'prev_close','volume','total_turnover',\
-              'a1', 'a2', 'a3', 'a4', 'a5', 'a1_v', 'a2_v', 'a3_v', 'a4_v', 'a5_v',\
-              'b1', 'b2', 'b3', 'b4', 'b5', 'b1_v', 'b2_v', 'b3_v', 'b4_v', 'b5_v',\
-              'current_volume']
+TICK_COLUMNS = ['datetime', 'open', 'last', 'high', 'low', 'prev_close', 'volume', 'total_turnover',
+                'a1', 'a2', 'a3', 'a4', 'a5', 'a1_v', 'a2_v', 'a3_v', 'a4_v', 'a5_v',
+                'b1', 'b2', 'b3', 'b4', 'b5', 'b1_v', 'b2_v', 'b3_v', 'b4_v', 'b5_v',
+                'current_volume']
 
-class BreakthroughStrategy(CtaTemplate):
+
+class BreakthroughStrategyC(CtaTemplate):
     """"""
 
     author = "MigToLoveYou"
@@ -76,12 +77,12 @@ class BreakthroughStrategy(CtaTemplate):
 
     STATES = ['start', 'peak', 'break', 'open', 'opening', 'watch', 'close', 'stop']
     TRANSITIONS = [
-        {'trigger':'new_peak', 'source':'start', 'dest':'peak', 'after':'on_new_peak'},
-        {'trigger':'new_break', 'source':'peak', 'dest':'break', 'after':'on_new_break'},
-        {'trigger':'new_open', 'source':'break', 'dest':'open', 'after':'on_new_open'},
-        {'trigger':'new_watch', 'source':'open', 'dest':'watch', 'after':'on_new_watch'},
-        {'trigger':'new_close', 'source':'watch', 'dest':'close', 'after':'on_new_close'},
-        {'trigger':'new_stop', 'source':'watch', 'dest':'stop', 'after':'on_new_stop'}
+        {'trigger': 'new_peak', 'source': 'start', 'dest': 'peak', 'after': 'on_new_peak'},
+        {'trigger': 'new_break', 'source': 'peak', 'dest': 'break', 'after': 'on_new_break'},
+        {'trigger': 'new_open', 'source': 'break', 'dest': 'open', 'after': 'on_new_open'},
+        {'trigger': 'new_watch', 'source': 'open', 'dest': 'watch', 'after': 'on_new_watch'},
+        {'trigger': 'new_close', 'source': 'watch', 'dest': 'close', 'after': 'on_new_close'},
+        {'trigger': 'new_stop', 'source': 'watch', 'dest': 'stop', 'after': 'on_new_stop'}
     ]
 
     def __init__(self,
@@ -129,10 +130,10 @@ class BreakthroughStrategy(CtaTemplate):
         Callback of new order data update.
         """
         if self._order_state == 'order_watch':
-            self.write_log('[x] order status:{} volume:{} traded:{}'\
-                            .format(order.status,
-                                    order.volume,
-                                    order.traded))
+            self.write_log('[x] order status:{} volume:{} traded:{}'
+                           .format(order.status,
+                                   order.volume,
+                                   order.traded))
             if order.status == Status.ALLTRADED:
                 self._order_state = 'order_open'
             elif order.status in set([Status.REJECTED, Status.CANCELLED]):
@@ -143,7 +144,7 @@ class BreakthroughStrategy(CtaTemplate):
         """
         Callback of new trade data update.
         """
-        self.put_event() # update strategy status to UI
+        self.put_event()  # update strategy status to UI
 
     def reset(self):
         """"""
@@ -174,8 +175,8 @@ class BreakthroughStrategy(CtaTemplate):
 
     @staticmethod
     def is_trading_time(check):
-        if  (check >= time(9, 30) and check <= time(11, 30) or
-            check >= time(13, 00) and check <= time(15, 00)):
+        if (check >= time(9, 30) and check <= time(11, 30)
+           or check >= time(13, 00) and check <= time(15, 00)):
             return True
         else:
             return False
@@ -186,17 +187,17 @@ class BreakthroughStrategy(CtaTemplate):
         if len_price > 30:
             min_span = 4
         else:
-            min_span = len_price//bins
+            min_span = len_price // bins
 
         mean_price = np.mean(lst_price)
-        norm_lst_price = np.array([price-mean_price for price in lst_price])
+        norm_lst_price = np.array([price - mean_price for price in lst_price])
         thres_peak = np.percentile(norm_lst_price,
                                    quantile_percent)
         idx_peak = peakutils.indexes(norm_lst_price,
                                      thres=thres_peak,
                                      min_dist=min_span)
 
-        norm_lst_price_reverse = np.array([mean_price-price for price in lst_price])
+        norm_lst_price_reverse = np.array([mean_price - price for price in lst_price])
         thres_trough = np.percentile(norm_lst_price_reverse,
                                      quantile_percent)
         idx_trough = peakutils.indexes(norm_lst_price_reverse,
@@ -242,70 +243,70 @@ class BreakthroughStrategy(CtaTemplate):
         return tick_series
 
     def on_new_peak(self):
-        self.write_log('[x] find a new peak at idx:{} datetime_idx: {} price: {}'\
-              .format(self._last_peak_idx,\
-                      self._df_1min.index[self._last_peak_idx],
-                      self._df_1min.iloc[self._last_peak_idx]['last']))
+        self.write_log('[x] find a new peak at idx:{} datetime_idx: {} price: {}'
+                       .format(self._last_peak_idx,
+                               self._df_1min.index[self._last_peak_idx],
+                               self._df_1min.iloc[self._last_peak_idx]['last']))
         if self._last_trough_idx:
-            self.write_log('[x] last trough at idx:{} datetime_idx: {}'\
-                  .format(self._last_trough_idx,\
-                          self._df_1min.index[self.last_trough_idx]))
+            self.write_log('[x] last trough at idx:{} datetime_idx: {}'
+                           .format(self._last_trough_idx,
+                                   self._df_1min.index[self.last_trough_idx]))
         else:
-            self.write_log('[x] initial last trough at window open tick: {}, price:{}'\
-                  .format(self._window_open_datetime,
-                          self._last_trough_price))
-        self.write_log("[x] current 1min price list: \n{}"\
-              .format(self._df_1min['last']))
+            self.write_log('[x] initial last trough at window open tick: {}, price:{}'
+                           .format(self._window_open_datetime,
+                                   self._last_trough_price))
+        self.write_log("[x] current 1min price list: \n{}"
+                       .format(self._df_1min['last']))
         self.put_event()
         return
 
     def on_new_break(self):
-        self.write_log('[x] find a new break at datetime_idx:{}'\
-              .format(self._last_break_idx))
-        self.write_log("[x] current 1min price list: \n{}"\
-              .format(self._df_1min['last']))
+        self.write_log('[x] find a new break at datetime_idx:{}'
+                       .format(self._last_break_idx))
+        self.write_log("[x] current 1min price list: \n{}"
+                       .format(self._df_1min['last']))
         self.put_event()
         return
 
     def on_new_open(self):
-        self.write_log("[x] will open position after datetime_idx: {}"\
-              .format(self._df_tick.index[-1]))
+        self.write_log("[x] will open position after datetime_idx: {}"
+                       .format(self._df_tick.index[-1]))
         self.put_event()
         return
 
     def on_new_watch(self):
-        self.write_log('[x] opened a new position at datetime_idx: {}, price: {}, volume: {}'\
-              .format(self._df_tick.index[-1],
-                      self._buy_price,
-                      self._buy_volume))
-        self.write_log("[x] current tick price list after last 1min: \n{}"\
-              .format(self._df_tick.iloc[self._df_tick.index>=self._df_1min.index[-1]]\
-                      [['last', 'a1', 'a2', 'a3', 'a4', 'a5',\
-                                'b1', 'b2', 'b3', 'b4', 'b5']]))
+        self.write_log('[x] opened a new position at datetime_idx: {}, price: {}, volume: {}'
+                       .format(self._df_tick.index[-1],
+                               self._buy_price,
+                               self._buy_volume))
+        self.write_log("[x] current tick price list after last 1min: \n{}"
+                       .format(self._df_tick.iloc[self._df_tick.index >= self._df_1min.index[-1]]
+                               [['last', 'a1', 'a2', 'a3', 'a4', 'a5',
+                                 'b1', 'b2', 'b3', 'b4', 'b5']]))
         self.put_event()
         return
 
     def on_new_close(self):
-        self.write_log('[x] close position at datetime_idx: {}, price: {}, volume: {}'\
-              .format(self._df_tick.index[-1],
-                      self._close_price,
-                      self._buy_volume))
-        self.write_log("[x] current tick price list after last 1min: \n{}"\
-              .format(self._df_tick.iloc[self._df_tick.index>=self._df_1min.index[-1]]\
-                      [['last', 'a1', 'a2', 'a3', 'a4', 'a5',\
-                                'b1', 'b2', 'b3', 'b4', 'b5']]))
+        self.write_log('[x] close position at datetime_idx: {}, price: {}, volume: {}'
+                       .format(self._df_tick.index[-1],
+                               self._close_price,
+                               self._buy_volume))
+        self.write_log("[x] current tick price list after last 1min: \n{}"
+                       .format(self._df_tick.iloc[self._df_tick.index >= self._df_1min.index[-1]]
+                               [['last', 'a1', 'a2', 'a3', 'a4', 'a5',
+                                 'b1', 'b2', 'b3', 'b4', 'b5']]))
         self.put_event()
         return
 
     def on_new_stop(self):
-        self.write_log('[x] close position at datetime_idx: {}, price: {}, volume: {}'\
-              .format(self._df_tick.index[-1],
-                      self._stop_price,
-                      self._buy_volume))
-        self.write_log("[x] current tick price list after last 1min: \n{}"\
-              .format(self._df_tick.iloc[self._df_tick.index>=self._df_1min.index[-1]]\
-                      [['last', 'a1', 'a2', 'a3', 'a4', 'a5',\
-                                'b1', 'b2', 'b3', 'b4', 'b5']]))
+        self.write_log('[x] close position at datetime_idx: {}, price: {}, volume: {}'
+                       .format(self._df_tick.index[-1],
+                               self._stop_price,
+                               self._buy_volume))
+        self.write_log("[x] current tick price list after last 1min: \n{}"
+                       .format(self._df_tick.iloc[self._df_tick.index >= self._df_1min.index[-1]]
+                               [['last', 'a1', 'a2', 'a3', 'a4', 'a5',
+                                 'b1', 'b2', 'b3', 'b4', 'b5']]))
         self.put_event()
         return
 
@@ -316,7 +317,7 @@ class BreakthroughStrategy(CtaTemplate):
         if not self.trading:
             return
 
-        tick = self.tickdata_to_series(tickdata)
+        tick = BreakthroughStrategyC.tickdata_to_series(tickdata)
 
         if not self._tick_date:
             self._tick_date = tick['datetime'].date()
@@ -396,7 +397,7 @@ class BreakthroughStrategy(CtaTemplate):
                     self._last_trough_price = self._df_1min.iloc[idx_trough[-1]]['last']
                     self.last_trough_idx = idx_trough[-1]
 
-            #print(self.df_1min.iloc[idx_trough, :][['datetime', 'last', 'volume', 'mean']])
+            # print(self.df_1min.iloc[idx_trough, :][['datetime', 'last', 'volume', 'mean']])
 
             if idx_peak.size > 0:
                 peak_price = self._df_1min.iloc[idx_peak[-1]]['last']
@@ -408,41 +409,41 @@ class BreakthroughStrategy(CtaTemplate):
 
                 h_amplitude = peak_price - self._last_trough_price
                 y_amplitute = peak_price - next_trough_price
-                if h_amplitude > self._market_open_price*self.h_amp_ratio and\
-                   y_amplitute < peak_price*self.y_amp_ratio:
+                if h_amplitude > self._market_open_price * self.h_amp_ratio and\
+                   y_amplitute < peak_price * self.y_amp_ratio:
                     self._last_peak_idx = idx_peak[-1]
-                    self.new_peak() # transit to state: peak
+                    self.new_peak()  # transit to state: peak
                 else:
-                    self.reset() # reset, start from scratch
+                    self.reset()  # reset, start from scratch
             return
         elif self.state == 'peak':
             peak_price = self._df_1min.iloc[self._last_peak_idx]['last']
             peak_volume = self._df_1min.iloc[self._last_peak_idx]['current_volume']
             # only search for a limit period of time
             if self._judged_tick_count > self.tick_count_limit:
-                self.reset() # reset, transit back to state: start
+                self.reset()  # reset, transit back to state: start
                 return
 
             self._judged_tick_count += 1
-            if tick['last'] >= peak_price: # break should last for a few ticks
+            if tick['last'] >= peak_price:  # break should last for a few ticks
                 self._break_hold += 1
                 if self._break_hold > self.break_hold_limit:
                     if tick['current_volume'] > peak_volume:
                         self._last_break_idx = self._df_tick.index[-1]
-                        self.new_break() # transit to state: break
+                        self.new_break()  # transit to state: break
             else:
-                #self.reset()
+                # self.reset()
                 self._break_hold = 0
             return
         elif self.state == 'break':
             peak_price = self._df_1min.iloc[self._last_peak_idx]['last']
-            if tick['last'] >= peak_price: # break must hold before open position
+            if tick['last'] >= peak_price:  # break must hold before open position
                 sum_sell_vol = tick['a1_v'] + tick['a2_v'] + tick['a3_v'] +\
-                               tick['a4_v'] + tick['a5_v']
+                    tick['a4_v'] + tick['a5_v']
                 if sum_sell_vol > self.sell_vol_limit:
-                    self.new_open() # transit to state: open
+                    self.new_open()  # transit to state: open
             else:
-                self.reset() # reset, transit back to state: start
+                self.reset()  # reset, transit back to state: start
             return
         elif self.state == 'open':
             if self._order_state == 'order_start':
@@ -455,15 +456,15 @@ class BreakthroughStrategy(CtaTemplate):
                     self.buy(self._buy_price, self._buy_volume)
                     self._order_state = 'order_watch'
                 else:
-                    self.to_break() # transit back to break
+                    self.to_break()  # transit back to break
             elif self._order_state == 'order_open':
-                    # open success
-                    self._order_state = 'order_start'
-                    self.new_watch()
+                # open success
+                self._order_state = 'order_start'
+                self.new_watch()
             elif self._order_state == 'order_end':
-                    # open failed
-                    self._order_state = 'order_start'
-                    self.to_peak() # transit back to peak
+                # open failed
+                self._order_state = 'order_start'
+                self.to_peak()  # transit back to peak
             else:
                 # state:order_watch is handled in func:on_order
                 pass
@@ -490,7 +491,7 @@ class BreakthroughStrategy(CtaTemplate):
                 self.write_log('[x] position close success')
                 self.reset()
             elif self._order_state == 'order_end':
-                self.write_log('[x] position close failed, resell at b2 price: {}'\
+                self.write_log('[x] position close failed, resell at b2 price: {}'
                                .format(tick['b2']))
                 self._close_price = tick['b2']
                 self._order_state = 'order_start'
@@ -505,7 +506,7 @@ class BreakthroughStrategy(CtaTemplate):
                 self.write_log('[x] position stop success')
                 self.reset()
             elif self._order_state == 'order_end':
-                self.write_log('[x] position stop failed, resell at b2 price: {}'\
+                self.write_log('[x] position stop failed, resell at b2 price: {}'
                                .format(tick['b2']))
                 self._stop_price = tick['b2']
                 self._order_state = 'order_start'
