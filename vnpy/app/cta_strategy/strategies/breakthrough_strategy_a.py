@@ -176,7 +176,6 @@ class BreakthroughStrategyA(CtaTemplate):
         df.drop(drop_list, inplace=True)
         new_indexes = df[df.peak == 1].index.tolist()
         new_indexes2 = df[df.though == 1].index.tolist()
-        # print("new list is {} and {}".format(new_indexes,new_indexes2))
         return new_indexes, new_indexes2
 
     @staticmethod
@@ -192,7 +191,6 @@ class BreakthroughStrategyA(CtaTemplate):
             m_dist = m // bins
         k = np.mean(cb)
         new = np.array([one - k for one in cb])
-        # indexes = peakutils.indexes(cb, thres=0.02/max(cb), min_dist=4)
         thres1 = np.percentile(new, quantile_percent)
         indexes = peakutils.indexes(new, thres=thres1, min_dist=m_dist)
         new2 = np.array([k - one for one in cb])
@@ -200,10 +198,6 @@ class BreakthroughStrategyA(CtaTemplate):
         indexes2 = peakutils.indexes(new2, thres=thres2, min_dist=m_dist)
         tmp_index = np.sort(indexes.tolist() + indexes2.tolist())
         new_indexes, new_indexes2 = BreakthroughStrategyA.con_p_t(indexes=indexes, index2=indexes2, price_list=df1.loc[tmp_index, 'last'].tolist())
-        #     df1[["last"]].plot()
-        #     plt.plot(new_indexes,df1.loc[new_indexes,'last'].values.tolist(),'r+')
-        #     plt.plot(new_indexes2,df1.loc[new_indexes2,'last'].values.tolist(),'k*')
-        #     plt.show()
         if "index" in df1.columns.tolist():
             df1.drop(["index"], axis=1, inplace=True)
         return df1.loc[new_indexes, :], df1.loc[new_indexes2, :]
@@ -272,8 +266,6 @@ class BreakthroughStrategyA(CtaTemplate):
             strategy_flag = ''
             return temp_pk, temp_th, result_stop, last_point_flag, strategy_flag
         df_m = df_stored.copy()
-        # df_m = pd.concat([df_stored, df_m])
-        # tick data's TIME %100 != 3
         if df_tick.TIME.values[0] == df_m.TIME.values[-1] + 3:
             df_m = pd.concat([df_m, df_tick.loc[:, ["TIME", "last", "open", "mean", "current_volume"]]])
             df_m = df_m.sort_values(by="TIME")
@@ -292,15 +284,11 @@ class BreakthroughStrategyA(CtaTemplate):
         temp_pk, temp_th = BreakthroughStrategyA.find_peak_trough(df_m)
         df_mm = df_m.iloc[:-1, :]
         if not temp_pk.empty:
-            # temp_pk.rename(columns={"index": "INDEX"}, inplace=True)
             if df_m.TIME.values[-1] in temp_pk.TIME.tolist():
                 last_point_flag = 1
         if not temp_th.empty:
-            # temp_th.rename(columns={"index": "INDEX"}, inplace=True)
             if df_m.TIME.values[-1] in temp_th.TIME.tolist():
                 last_point_flag = -1
-                # first window
-                #     if df_stored.shape[0] == before - 1 and df_stored.iloc[0]["TIME"] == 93100:
         if df_stored.iloc[0]["TIME"] == 93100:
             if not temp_pk.empty:
                 index_max = temp_pk[["last"]].idxmax(axis=0, skipna=True).values[0]
@@ -311,7 +299,6 @@ class BreakthroughStrategyA(CtaTemplate):
                     result_stop["last"] = [df_m.iloc[0]["open"]]
                     result_stop.TIME = [93000]
                     result_stop.index = [-1]  # insert into the first line
-                #     print(f'{temp_pk},"$$$$$",{result_stop}')
             else:
                 result_stop = df_m.iloc[:1]
                 result_stop["last"] = [df_m.iloc[0]["open"]]
@@ -319,7 +306,6 @@ class BreakthroughStrategyA(CtaTemplate):
                 result_stop.index = [-1]
         else:
             if len(temp_pk) >= 2 and temp_pk.iloc[0]["last"] < temp_pk.iloc[-1]["last"]:
-                # result_stop = pd.DataFrame(temp_pk.iloc[-1]).T
                 result_stop = temp_pk.iloc[-1:]
             else:
                 if temp_pk.empty:
@@ -336,7 +322,7 @@ class BreakthroughStrategyA(CtaTemplate):
         if "index" in temp_th.columns.tolist():
             result_stop.drop(["index"], axis=1, inplace=True)
 
-            # calculate strategy_flag
+        # calculate strategy_flag
         if temp_pk.empty or temp_th.empty:
             pass
         else:
@@ -363,8 +349,6 @@ class BreakthroughStrategyA(CtaTemplate):
         self._window_open_datetime = None
         self._last_trough_price = None
 
-        # self._df_1min_last_window_peak_before_flag = False
-        # self._last_window_first_peak_price = None
         self._last_peak_idx = None
         self._last_trough_time = None
         self._last_break_time = None
@@ -386,8 +370,6 @@ class BreakthroughStrategyA(CtaTemplate):
         Reset class to initial state
         leave peaks that found yet
         """
-        # self._df_tick = pd.DataFrame(columns=df.columns)#
-        # self._df_1min = pd.DataFrame(columns=df.columns)#
         self._temp_pk = pd.DataFrame()
         self._temp_th = pd.DataFrame()
         self._market_open_price = None
@@ -395,8 +377,6 @@ class BreakthroughStrategyA(CtaTemplate):
         self._window_open_datetime = None
         self._last_trough_price = None
 
-        # self._df_1min_last_window_peak_before_flag = False
-        # self._last_window_first_peak_price = None
         self._last_peak_idx = None
         self._last_trough_time = None
         self._last_break_time = None
@@ -604,14 +584,6 @@ class BreakthroughStrategyA(CtaTemplate):
                 return
 
             # find peak & trough in df_1min
-            # lst_1min_price = list(self._df_1min['last'])
-            # idx_peak, idx_trough = find_peak_trough(lst_1min_price)
-
-            # print("666666666666666",self._df_1min,df_tick_resample.iloc[-1:])
-            # raise Exception
-            # min_last_window_peak_before = self._df_1min_last_window_peak_before
-            # 用于判断是不是新窗口的信号 , 如果是新窗口 , 就把self._df_1min截取
-            # print("flag is .....................\n",self._df_1min_last_window_peak_before_flag)
             if self._df_1min_last_window_peak_before_flag:  # need to add this
                 self._df_1min = self._df_1min[self._df_1min['TIME'] >= self._df_1min_last_window_peak_before.iloc[-1]['TIME']]
             else:
@@ -619,19 +591,11 @@ class BreakthroughStrategyA(CtaTemplate):
             # self.write_log(f"窗口的起始时间点...................{self._df_1min.iloc[0]['TIME']}")
             last_first_peak = self._df_1min_first_peak
             self._temp_pk, self._temp_th, self._df_1min_first_peak, self._last_point_flag, self._strategy_flag = BreakthroughStrategyA.sell_first_seek(df_stored=self._df_1min, df_tick=df_tick_resample.iloc[-1:], before=self.min_window_size)
-            # idx_peak = self._temp_pk.index.values
-            # idx_trough = self._temp_th.index.values
-            # print('this is result : \n',idx_peak,self._temp_pk, idx_trough,self._temp_th, self._df_1min_first_peak, self._last_point_flag, self._strategy_flag)
-
-            # update last_trough, it's trough right after the newest peak
-            # or just the newest trough
 
             if last_first_peak.empty:
                 # self.reset_data_left()
                 return
             elif (not self._df_1min_first_peak.empty) and (last_first_peak.iloc[-1]['last'] < self._df_1min_first_peak['last'].values[0]):
-                # print("in this model..........................................................................")
-                # print(last_first_peak['last'].values[0] ,self._df_1min_first_peak['last'].values[0])
                 change_time = self._df_1min_first_peak['TIME'].values[0]
                 self.write_log(f"window start at {self._df_1min.iloc[0]['TIME']}, changed time is :{change_time}")
                 if change_time == 93000:
@@ -641,12 +605,9 @@ class BreakthroughStrategyA(CtaTemplate):
                         if t < change_time:
                             ctime = t
                             break
-                    # print("ctime is ..................\n",ctime)
                     self._df_1min_last_window_peak_before = self._df_1min[self._df_1min['TIME'] == ctime]
                     self._df_1min_last_window_peak_before_flag = True
                     self.reset_data_left()
-                    # self.reset()
-                    # print(" the flag in this state ...............:\n",self._df_1min_last_window_peak_before_flag)
                     return
             else:
                 self._df_1min_last_window_peak_before_flag = False
@@ -656,22 +617,6 @@ class BreakthroughStrategyA(CtaTemplate):
                     self._last_window_first_peak_price = self._temp_pk.iloc[0]['last']
                     self._last_trough_time = self._df_1min.iloc[-1]['TIME']  # 指的是最后的min Time
                     self.new_peak()
-                else:
-                    return
-            else:
-                return
-            # if self._strategy_flag == "Tips1":
-            #     if self._last_point_flag == -1:
-            #         self._last_window_first_peak_price = self._temp_pk.iloc[0]['last']
-            #         self._last_trough_price = self._df_1min.iloc[-1]['last']
-            #         self._last_trough_time = self._df_1min.iloc[-1]['TIME']
-            #         self.new_break()
-            #     else:
-            #         # self.reset_data_left()
-            #         return
-            # else:
-            #     return
-                # self.reset_data_left()
             return
         elif self.state == 'peak':
             # 5）时间窗口内开仓时刻的价格 >= 同时时刻的均价；
@@ -683,10 +628,9 @@ class BreakthroughStrategyA(CtaTemplate):
 
             last_window_first_peak_price = self._last_window_first_peak_price
             if tick['last'] < tick['mean']:
-                # self.reset()
                 return
             if self._judged_tick_count > self.tick_count_limit:
-                # self.reset()  # reset, transit back to state: start
+                self.reset_data_left()
                 return
             self._judged_tick_count += 1
             if tick['last'] > last_window_first_peak_price:
@@ -694,7 +638,6 @@ class BreakthroughStrategyA(CtaTemplate):
                 self.new_break()
             else:
                 self.reset_data_left()
-                # self.reset()
             return
         elif self.state == 'break':
             last_window_first_peak_price = self._last_window_first_peak_price
@@ -704,21 +647,36 @@ class BreakthroughStrategyA(CtaTemplate):
                 if sum_sell_vol > self.sell_vol_limit:
                     self.new_open()  # transit to state: open
             else:
-                # return
                 self.reset_data_left()
-                # self.reset()
             return
         elif self.state == 'open':
-            last_window_first_peak_price = self._last_window_first_peak_price
-            if tick['last'] > last_window_first_peak_price:
-                self._buy_price = tick['a3']
-                self._last_b1_price = tick['b1']
-                self._buy_time = tick['TIME']
-                # self._last_b2_price = tick['b2']
+            if self._order_state == 'order_start':
+                last_window_first_peak_price = self._last_window_first_peak_price
+                if tick['last'] > last_window_first_peak_price:
+                    self._buy_price = tick['a3']
+                    self._last_b1_price = tick['b1']
+                    self._buy_time = tick['TIME']
+
+                    self.buy(self._buy_price, self._buy_volume)
+                    self._order_state = 'order_watch'
+                    self._judged_tick_count = 0
+                else:
+                    self.to_break()
+            elif self._order_state == 'order_open':
+                # open success
+                self._order_state = 'order_start'
                 self.new_watch()
+            elif self._order_state == 'order_end':
+                # open failed
+                self._order_state = 'order_start'
+                self.to_peak()  # transit back to peak
             else:
-                self.to_break()
-            return
+                # if order is not fullfilled in tick_count_limit, cancel all order
+                if self._judged_tick_count > self.tick_count_limit:
+                    self.cancel_all()
+                    self.reset_data_left()
+                    return
+                self._judged_tick_count += 1
         elif self.state == 'watch':
             buy_time = self._buy_time
 
@@ -742,22 +700,37 @@ class BreakthroughStrategyA(CtaTemplate):
                     if t < change_time:
                         ctime = t
                         break
-                # print("ctime is ..................\n",ctime)
                 self._df_1min_last_window_peak_before = self._df_1min[self._df_1min['TIME'] == ctime]
                 self._df_1min_last_window_peak_before_flag = True
                 self.reset_data_left()
             return
         elif self.state == 'close':
-            self.write_log('[x]entering close state')
-            # TODO:
-            # close position
-            self.reset_data_left()
+            if self._order_state == 'order_start':
+                self.sell(self._close_price, self._close_volume)
+                self._order_state = 'order_watch'
+            elif self._order_state == 'order_open':
+                self.write_log('[x] position close success')
+                self.reset()
+            elif self._order_state == 'order_end':
+                self.write_log('[x] position close failed, resell at b2 price: {}'
+                               .format(tick['b2']))
+                self._close_price = tick['b2']
+                self._order_state = 'order_start'
+            else:
+                pass
             return
         elif self.state == 'stop':
-            self.write_log('[x]entering stop state')
-            # TODO:
-            # stop position
-            self.reset_data_left()
+            if self._order_state == 'order_start':
+                self.sell(self._stop_price, self._stop_volume)
+                self._order_state = 'order_watch'
+            elif self._order_state == 'order_open':
+                self.write_log('[x] position stop success')
+                self.reset()
+            elif self._order_state == 'order_end':
+                self.write_log('[x] position stop failed, resell at b2 price: {}'
+                               .format(tick['b2']))
+                self._stop_price = tick['b2']
+                self._order_state = 'order_start'
             return
         else:
             return
