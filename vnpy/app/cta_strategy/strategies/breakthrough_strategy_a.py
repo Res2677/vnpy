@@ -46,8 +46,10 @@ class BreakthroughStrategyA(CtaTemplate):
     _buy_time = None
     _buy_price = 0
     _buy_volume = fixed_buy_size
-    _sell_price = 0
+    _close_price = 0
+    _close_volume = 0
     _stop_price = 0
+    _stop_volume = 0
     _df_1min_last_window_peak_before_flag = False
 
     _judged_tick_count = 0
@@ -354,8 +356,10 @@ class BreakthroughStrategyA(CtaTemplate):
         self._last_break_time = None
         self._buy_time = None
         self._buy_price = 0
-        self._sell_price = 0
+        self._close_price = 0
+        self._close_volume = 0
         self._stop_price = 0
+        self._stop_volume = 0
         self._last_b1_price = 0
         self._last_b2_price = 0
 
@@ -382,8 +386,10 @@ class BreakthroughStrategyA(CtaTemplate):
         self._last_break_time = None
         self._buy_time = None
         self._buy_price = 0
-        self._sell_price = 0
+        self._close_price = 0
+        self._close_volume = 0
         self._stop_price = 0
+        self._stop_volume = 0
         self._last_b1_price = 0
         self._last_b2_price = 0
 
@@ -686,9 +692,11 @@ class BreakthroughStrategyA(CtaTemplate):
 
             if (not peakdf.empty) and (peakdf.iloc[-1]['TIME'] > buy_time):
                 self._close_price = tick['last']
+                self._close_volume = self._buy_volume
                 self.new_close()
             elif tick['last'] < self.stop_ratio * self._market_open_price:
                 self._stop_price = tick['b1']
+                self._stop_volume = self._buy_volume
                 self.new_stop()
             else:
                 pass
@@ -731,6 +739,8 @@ class BreakthroughStrategyA(CtaTemplate):
                                .format(tick['b2']))
                 self._stop_price = tick['b2']
                 self._order_state = 'order_start'
+            else:
+                pass
             return
         else:
             return

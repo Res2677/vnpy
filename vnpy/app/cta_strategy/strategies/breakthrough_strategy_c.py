@@ -480,7 +480,7 @@ class BreakthroughStrategyC(CtaTemplate):
                 self.new_close()
             elif tick['last'] < peak_price:
                 self._stop_price = tick['b1']
-                self._stop_volume = self._stop_volume
+                self._stop_volume = self._buy_volume
                 self.new_stop()
             return
         elif self.state == 'close':

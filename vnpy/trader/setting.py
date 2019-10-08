@@ -23,7 +23,7 @@ SETTINGS = {
     "email.receiver": "",
 
     "rqdata.username": "license",
-    "rqdata.password": "TItprlYfcJQFiMbMUEq_Voo4_ngiNQr7cV6tobnZinw6bX733Oyfvp7v_jO2V0mmcfBGWQTelO7CTZu7YrYYl4Z3IZhXtglPrML-XMLxiFlcI3JwMgO_Gl7sdQA4gSOxtuTabgXm2dLccsYr-aPqxsneSYh2n0A-7ZIukKnWOF8=GVRwhrddx1qYsrgp57bXdcZvkik_th8S_fp4BARjpKd_MNs4CkuEs1DMUL8mbO83a2MbH-3aD4kxTX6JllfkPQz5Pvn8Yc4p3uYmPOG_5f-T-Iq17jrIbkhSAnAEtDYwCR8B-nKrHtbffDc4AMUIVdzj_NEqH9BXQWfpP_SFHCc=",
+    "rqdata.password": "TpGWvd1xClPLrR3laSMdvSKm2actLEQEEdudVl2pnjria7al8xLVgiL2GbZLFyno5oRRQAsuGWy819FVB-nX_Ijqtu9XNPOfjAzMBbSsK6macZIUvhAYFZFxn5uJPA8uI7TPHEsfIDDoVZICRbzJO5GvNv6gVsmeS288wr5GnPU=N1NkuNyT3kfR92q04tVJH7GmIXW1g8N0ph_DIbbGLlTJKLd_fruKVEZqOOPF_FfQdO6W-OblX8pz3ammz-lb3GnoKdaNPa11FaWeLCaFxdJFw841E_8pfDJ8Hc9-QDP45ldiRkXTQoHdc1NeEMhVOnv3yE7YVZhpc9Jp5gctt_g=",
 
     "database.driver": "sqlite",  # see database.Driver
     "database.database": "database.db",  # for sqlite, use this as filepath
