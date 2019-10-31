@@ -330,10 +330,13 @@ class BreakthroughStrategyC(CtaTemplate):
             return
 
         # if time > 14:55, stop all open positions
-        if tick['datetime'].time() > time(14, 55) and self.pos > 0:
-            self._stop_volume = self.pos
-            self._stop_price = tick['b1']
-            self.to_stop()
+        if tick['datetime'].time() > time(14, 55):
+            if self.pos > 0:
+                self._stop_volume = self.pos
+                self._stop_price = tick['b1']
+                self.to_stop()
+            else:
+                return
 
         # calculate current volume
         if self._last_volume == 0:

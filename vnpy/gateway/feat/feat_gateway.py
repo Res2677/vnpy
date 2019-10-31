@@ -281,13 +281,13 @@ class FeatRestApi(RestClient):
             if pos_data:
                 for pos in pos_data:
                     position = PositionData(gateway_name=self.gateway_name,
-                                            symbol=pos[1],
-                                            exchange=MARKETTYPE_FEAT2VT[pos[11]],
+                                            symbol=pos[0],
+                                            exchange=MARKETTYPE_FEAT2VT[pos[10]],
                                             direction=Direction.LONG,
                                             volume=int(pos[3]),
-                                            frozen=int(pos[5]),
-                                            price=float('%.2f' % float(pos[7])),
-                                            pnl=float('%.2f' % float(pos[6])),
+                                            frozen=int(pos[4]),
+                                            price=float('%.2f' % float(pos[6])),
+                                            pnl=float('%.2f' % float(pos[5])),
                                             yd_volume=int(pos[4])
                                             )
                     self.gateway.on_position(position)
