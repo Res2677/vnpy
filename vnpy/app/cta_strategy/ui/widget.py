@@ -71,9 +71,9 @@ class CtaManager(QtWidgets.QWidget):
 
         self.log_monitor = LogMonitor(self.main_engine, self.event_engine)
 
-        self.stop_order_monitor = StopOrderMonitor(
-            self.main_engine, self.event_engine
-        )
+        #self.stop_order_monitor = StopOrderMonitor(
+        #    self.main_engine, self.event_engine
+        #)
 
         # Set layout
         hbox1 = QtWidgets.QHBoxLayout()
@@ -87,8 +87,8 @@ class CtaManager(QtWidgets.QWidget):
 
         grid = QtWidgets.QGridLayout()
         grid.addWidget(scroll_area, 0, 0, 2, 1)
-        grid.addWidget(self.stop_order_monitor, 0, 1)
-        grid.addWidget(self.log_monitor, 1, 1)
+        #grid.addWidget(self.stop_order_monitor, 0, 1)
+        grid.addWidget(self.log_monitor, 0, 1)
 
         vbox = QtWidgets.QVBoxLayout()
         vbox.addLayout(hbox1)
