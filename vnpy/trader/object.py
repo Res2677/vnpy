@@ -35,6 +35,7 @@ class TickData(BaseData):
     datetime: datetime
 
     name: str = ""
+    current_volume: float = 0
     volume: float = 0
     open_interest: float = 0
     last_price: float = 0
